@@ -1,20 +1,9 @@
 
-"""
-Credit Card Fraud Detection using Vanilla GCN
-Streamlit Dashboard
-GCN calculations: Pure Python, no NumPy or ML library.
-"""
 
 import streamlit as st
 import pandas as pd
 
 E = 2.718281828459045
-
-
-# ---------------------------------------------------------------
-# 1. HELPER FUNCTIONS
-# ---------------------------------------------------------------
-
 def zeros(r, c):
     return [[0.0] * c for _ in range(r)]
 
@@ -69,12 +58,6 @@ def argmax(row):
             best = i
 
     return best
-
-
-# ---------------------------------------------------------------
-# 2. RANDOM NUMBER GENERATOR
-# ---------------------------------------------------------------
-
 class RNG:
 
     def __init__(self, seed=7):
@@ -88,12 +71,6 @@ class RNG:
         return lo + (hi - lo) * (
             self.s / 2147483648
         )
-
-
-# ---------------------------------------------------------------
-# 3. GRAPH CONSTRUCTION
-# ---------------------------------------------------------------
-
 def build_adjacency(n, edges):
 
     A = zeros(n, n)
@@ -102,7 +79,6 @@ def build_adjacency(n, edges):
         A[u][v] = 1.0
         A[v][u] = 1.0
 
-    # Add self-loops
     for i in range(n):
         A[i][i] = 1.0
 
@@ -126,12 +102,6 @@ def normalize(A):
                 )
 
     return A_hat
-
-
-# ---------------------------------------------------------------
-# 4. VANILLA GCN MODEL
-# ---------------------------------------------------------------
-
 class GCN:
 
     def __init__(self, in_dim, hidden, out_dim):
@@ -148,7 +118,6 @@ class GCN:
             for _ in range(hidden)
         ]
 
-    # Forward propagation
     def forward(self, A_hat, X):
 
         self.AX = matmul(A_hat, X)
@@ -164,8 +133,6 @@ class GCN:
         self.P = softmax_rows(self.Z2)
 
         return self.P
-
-    # Backpropagation
     def backward(self, A_hat, Y, train_idx, lr):
 
         n = len(self.P)
@@ -204,7 +171,6 @@ class GCN:
             dZ1
         )
 
-        # Update first weight matrix
         for i in range(len(self.W1)):
             for j in range(len(self.W1[0])):
                 self.W1[i][j] -= lr * dW1[i][j]
@@ -213,25 +179,15 @@ class GCN:
         for i in range(len(self.W2)):
             for j in range(len(self.W2[0])):
                 self.W2[i][j] -= lr * dW2[i][j]
-
-
-# ---------------------------------------------------------------
-# 5. TRANSACTION DATA
-# ---------------------------------------------------------------
-
 names = [
     "T001", "T002", "T003", "T004",
     "T005", "T006", "T007", "T008",
     "T009", "T010", "T011", "T012",
     "T013", "T014"
 ]
-
-# Features:
-# [Transaction Amount, Transaction Time, Risk Indicator]
-
 X = [
 
-    # Legitimate transactions
+   
     [0.10, 0.10, 0.10],
     [0.12, 0.12, 0.15],
     [0.15, 0.15, 0.10],
@@ -241,7 +197,7 @@ X = [
     [0.20, 0.25, 0.18],
     [0.16, 0.28, 0.12],
 
-    # Fraudulent transactions
+ 
     [0.90, 0.80, 0.90],
     [0.92, 0.82, 0.95],
     [0.88, 0.85, 0.90],
@@ -250,42 +206,25 @@ X = [
     [0.89, 0.92, 0.88]
 ]
 
-# Transaction similarity connections
+
 edges = [
 
-    # Legitimate group
     (0, 1), (0, 2), (1, 3),
     (2, 3), (3, 4), (4, 5),
     (5, 6), (6, 7), (1, 6),
 
-    # Fraud group
     (8, 9), (8, 10), (9, 11),
     (10, 11), (11, 12), (12, 13),
     (9, 13), (8, 12),
-
-    # Cross-group connections
     (7, 13), (4, 10)
 ]
-
-# Actual labels for this illustrative dataset
-# 0 = Legitimate
-# 1 = Fraud
-
 true_labels = [0] * 8 + [1] * 6
-
-# Only four labels are used for training
 known = {
     0: 0,
     1: 0,
     8: 1,
     9: 1
 }
-
-
-# ---------------------------------------------------------------
-# 6. TRAINING FUNCTION
-# ---------------------------------------------------------------
-
 def train_model(epochs, learning_rate):
 
     n = len(X)
@@ -348,12 +287,6 @@ def train_model(epochs, learning_rate):
     predictions = model.forward(A_hat, X)
 
     return predictions, history, test_idx
-
-
-# ---------------------------------------------------------------
-# 7. PERFORMANCE METRICS
-# ---------------------------------------------------------------
-
 def calculate_metrics(predicted, actual):
 
     tp = fp = tn = fn = 0
@@ -388,11 +321,6 @@ def calculate_metrics(predicted, actual):
         "F1 Score": f1 * 100
     }
 
-
-# ---------------------------------------------------------------
-# 8. STREAMLIT DASHBOARD
-# ---------------------------------------------------------------
-
 st.set_page_config(
     page_title="Credit Card Fraud Detection",
     page_icon="💳",
@@ -413,8 +341,6 @@ st.info(
     "It is not yet trained on the full Kaggle dataset."
 )
 
-
-# Sidebar controls
 st.sidebar.header("Model Settings")
 
 epochs = st.sidebar.slider(
@@ -447,8 +373,6 @@ train_button = st.sidebar.button(
     "🚀 Train GCN Model",
     use_container_width=True
 )
-
-# Train automatically on first load or when button is pressed
 if "gcn_results" not in st.session_state or train_button:
 
     with st.spinner("Training Vanilla GCN..."):
@@ -471,12 +395,6 @@ results = st.session_state.gcn_results
 P = results["P"]
 history = results["history"]
 test_idx = results["test_idx"]
-
-
-# ---------------------------------------------------------------
-# 9. MAKE PREDICTIONS
-# ---------------------------------------------------------------
-
 predicted_labels = [
     1 if P[i][1] >= threshold else 0
     for i in range(len(names))
@@ -497,12 +415,6 @@ metrics = calculate_metrics(
 
 fraud_count = sum(predicted_labels)
 legitimate_count = len(names) - fraud_count
-
-
-# ---------------------------------------------------------------
-# 10. DASHBOARD SUMMARY
-# ---------------------------------------------------------------
-
 st.divider()
 st.header("📊 Transaction Overview")
 
@@ -512,12 +424,6 @@ col1.metric("Total Transactions", len(names))
 col2.metric("Predicted Fraud", fraud_count)
 col3.metric("Predicted Legitimate", legitimate_count)
 col4.metric("Known Training Labels", len(known))
-
-
-# ---------------------------------------------------------------
-# 11. TRANSACTION DISTRIBUTION CHART
-# ---------------------------------------------------------------
-
 st.divider()
 st.header("Transaction Distribution")
 
@@ -546,12 +452,6 @@ st.vega_lite_chart(
     },
     use_container_width=True
 )
-
-
-# ---------------------------------------------------------------
-# 12. FRAUD PROBABILITY CHART
-# ---------------------------------------------------------------
-
 st.divider()
 st.header("Fraud Probability by Transaction")
 
@@ -590,12 +490,6 @@ st.vega_lite_chart(
 st.caption(
     "A probability above the selected threshold is classified as fraud."
 )
-
-
-# ---------------------------------------------------------------
-# 13. TRAINING PERFORMANCE
-# ---------------------------------------------------------------
-
 st.divider()
 st.header("📈 GCN Training Performance")
 
@@ -642,12 +536,6 @@ st.caption(
     "Training confidence measures the average probability "
     "assigned to the correct class for the four labeled transactions."
 )
-
-
-# ---------------------------------------------------------------
-# 14. PREDICTION TABLE
-# ---------------------------------------------------------------
-
 st.divider()
 st.header("🔍 Transaction Prediction Results")
 
@@ -680,12 +568,6 @@ st.dataframe(
     use_container_width=True,
     hide_index=True
 )
-
-
-# ---------------------------------------------------------------
-# 15. EVALUATION METRICS
-# ---------------------------------------------------------------
-
 st.divider()
 st.header("📋 Model Evaluation")
 
@@ -701,11 +583,6 @@ m1.metric("Accuracy", f"{metrics['Accuracy']:.2f}%")
 m2.metric("Precision", f"{metrics['Precision']:.2f}%")
 m3.metric("Recall", f"{metrics['Recall']:.2f}%")
 m4.metric("F1 Score", f"{metrics['F1 Score']:.2f}%")
-
-
-# ---------------------------------------------------------------
-# 16. CONFUSION MATRIX
-# ---------------------------------------------------------------
 
 st.subheader("Confusion Matrix")
 
@@ -733,11 +610,6 @@ st.caption(
     "legitimate transactions; FP = legitimate transactions "
     "incorrectly flagged as fraud; FN = missed fraud transactions."
 )
-
-
-# ---------------------------------------------------------------
-# 17. PROJECT INFORMATION
-# ---------------------------------------------------------------
 
 st.divider()
 
